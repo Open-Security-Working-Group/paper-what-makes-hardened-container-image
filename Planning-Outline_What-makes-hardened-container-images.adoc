@@ -1,0 +1,314 @@
+= Planning Outline: What makes hardened container images
+
+== Executive Summary
+#TODO#
+
+== The Problem
+The organization has at least partially unknown and uncontrolled attack surface exposed by the use of container images but there is no industry agreed upon set of container image validation and hardening practices which an organization can follow to reduce that attack surface.
+
+== The History
+There is a need to create a baseline measurement to compare the different offerings with Container Images.
+
+Due to the large adoption of using Container Images in the industry, there is a need to help direct the state in which all (Linux) Distributions are handling the use of Container Images. 
+
+We are being specific when calling it Container Images, and not containerization. When the industry talks about “Containerization” some might include the platform which the container is run.
+
+== The Solution
+Create an industry agreed upon set of container image validation and hardening practices which organizations can follow to reduce the attack surface created by using container images; which includes the following:
+
+=== Use the smallest container images possible
+Use the smallest container images possible for your purpose. If you are using an existing container image, consider removing the packages you don’t use before using it.
+
+Consider building a container image specific for your purpose. If you follow this path, the security would be much higher, but if you don’t take care, the maintainability of the image would be more difficult. If you design your own container image, you could create it from scratch (from a blank image), and include only what you need. If you use only statically linked binaries you can reduce even more the container image, and therefore, the risk.
+
+You can include packages and don’t include the package manager."apk", "apt", "bash", "curl", "dnf", "netcat","nmap","rpm","sh","tcsh","telnet","wget","yum"
+
+=== Scan the container images you use for known vulnerabilities
+Scan the container images you use for known vulnerabilities. This kind of scan is focused on identifying the versions of packages, libraries and dependencies used in a container image and comparing them with a database to know if the version is known to have security vulnerabilities.
+
+The general recommendation is to always upgrade and avoid using any package with known vulnerabilities, even if the risk is low. However, depending on your risk appetite and the effort needed to upgrade or change the container image in use, it might be possible to accept the risk and work with that container image without fixing the issue.
+
+Scan types? CVE… fuzzing…common attack vectors?
+
+=== Clearly defined support from vendors of your container images
+#TODO#
+
+=== Scan the container images for hardcoded secrets
+Container images could include hardcoded secrets, as credentials. Verify manually if you can or use scanning tools to scan the container images you use for hardcoded secrets.
+
+=== Build container images with all packages upgraded
+Existing container images could include packages with known security vulnerabilities. If you want to use existing container images without changing them too much, for example to maintain immutability as much as possible or to be able to reproduce, be sure to scan them for known vulnerabilities and evaluate if the existing vulnerabilities are acceptable or not.
+
+If you use known container images as base images, our recommendation is that you upgrade the packages present as soon as possible in your container image definition and build your own images.
+
+=== Use pinned base container images
+Depending on your process for building your container images, it might not be a good idea to always use the latest version of a container base image. If you use the latest version blindly, you might be including a container image that is not the one you have reviewed and want to use. The recommendation is to validate container images before its use, or at least have a criteria.
+
+Use the version tag for identifying which container images you want to use and when there is a new version, just execute the process in place to validate or approve it and change your base images then to use the latest one.
+
+=== Use container images that don’t require to use privileged containers
+There could exist special cases where privileged containers are useful and needed, however, try to avoid them if possible. The security controls that are not applied to privileged containers open the door to facilitate the exploitation of known and unknown vulnerabilities so the risk when we use them is much higher.
+
+=== Use signing capabilities in your tooling
+As the use of containers increases, attackers will target container images and container image repositories more frequently. Use signing software where it can increase the security of your use of container images. For example, sign you own container images before storing them on your own registries and verify the signature of the container images you pull from container image repositories.
+
+=== Ensure containers are not run as root (UID 0)
+At the end, containers are a process or a group of processes which use some cool kernel features to produce different kinds of isolation. As processes, they are run by root (UID 0) or by a different user. Containers which are NOT executed by root are called rootless containers. Use rootless containers as frequently as possible as the security is much higher. Be mindful that many container orchestrator solutions don’t support rootless containers yet.
+
+There is another place where you should consider using or not using root: inside the container. Due to user namespaces, you can be root (UID 0) within the rootless container. Isolation capabilities including user namespaces, SELinux and others allow that you are root within the container but not root outside it. However, a vulnerability in the isolation mechanisms can make that a user that is root within the container can reach kernel code or vulnerabilities. If you can execute the processes within the container also with a user different than root, you will reduce the attack surface and the risk.
+
+=== Use container images that don’t require special privileges
+If you can, use rootless containers. If you have to use rootful containers, try to use a non-root user within the containers. Use container images that don’t require to add capabilities to the container.
+
+=== Minimize environment variables containing secrets
+As containers are ephemeral it is frequently an issue to decide when to store secrets. Including them in the container image is not a solution because then someone with access to the container image can retrieve them. Another option is to store them in environment variables and pass them to the containers. This is an option but the security we have over secrets in environment variables is reduced. There have already been public breaches where a vulnerability allowed the access to environment variables and thus, secrets stored there.
+
+The recommendation is to use secrets management solutions which at building time or runtime the secret can be retrieved, used, and eliminated from the process, reducing the risk of leaking it.
+
+=== The Container Image Must Be Clear of Embedded Credentials
+* Checked and confirmed
+
+=== No environment configuration in container images
+This includes but is not limited to:
+* URIs / URLs
+* usernames
+* passwords
+* private keys
+* feature flags
+
+=== Runtimes that expect “secret” configuration should not expect or obtain it via environment variables
+Runtimes running in a container often have a need to access information that should be “secret”, (e.g. passwords, private keys) and the runtimes in those containers will need to be able to access that information. Any information that should be “secret” should never be expected by the runtime in the container to come from environment variables but rather from disk where access can be controlled.
+
+=== Signing container images and verifying them
+Security has a mechanism to verify that a container image is the container image we think we are using. In the context of this document, after a specific container image has been validated for its use in our organization, it is interesting to sign it.
+
+Then, the systems that will deploy and use the container image need to verify the signature of the container image.
+
+By this process of creating a signature and verifying it, we guarantee that the container image has not been modified, its integrity, between those two points in time.
+
+The signature could be verified at other moments like for example after downloading a container base image from a provider. In this case, we won’t be validating that the container image is the one that we signed, but that the container image was signed by the expected provider of the container image, and not but a malicious party.
+
+=== Logging and Monitoring of Containerized Resources
+Containers should use standard logging facilities STDOUT and STDERR to provide auditable event monitoring and alerting for the application. Containers should use standardized log formats commonly available on the platform such as RFC 2454 Syslog with clearly defined application and message tags for upstream analysis and integration with diverse platforms. 
+Containers should provide a health check mechanism by which the operational status of that container can effectively be determined.
+
+=== Validate container ports that are being used
+Privileged ports are those ports below 1024 and that require system privileges for their use. If containers are able to use these ports, the container must be run as a privileged user. The container platform must stop containers that try to map to these ports directly. Allowing non-privileged ports to be mapped to the container-privileged port is the allowable method when a certain port is needed. An example is mapping port 8080 externally to port 80 in the container.
+* The Container Image Must Only Expose Non-Privileged Ports 
+* The Container Image Must Only Enable Ports Used for the Service Being Implemented
+
+=== All crypto calls should be called from Host OS to container 
+* Use only FIPS validated crypto
+* Maintained by EUS
+
+=== Pull from base container images from trusted Source/registries
+* The environment can only pull from confirmed trusted sources
+* Checks signatures from the trusted sources
+* Available scanning to confirm origin
+
+=== Pull content layered into container image from trusted sources
+When building a custom container image the reason is typically to layer additional packages, binaries, or runnable source on top of the base image, and often that content comes from outside sources, such as packages or binaries from venders or upstream communities.
+
+The key is to be verifying the pull source of that content as part of the installation process into the container image and/or as a validation scan after the container image is built but before it is published.
+
+=== Least privilege/access controls
+* The Container Image ‘Must Have’ Permissions Removed from Executables that Allow a User to Execute Software at Higher Privileges
+
+== The Benefits
+* High confidence in confidentiality, integrity, and availability
+* Trust is built on Integrity
+* Reduced total cost of ownership
+* Reduced security risk
+* Planning on compromise/container breakout with limited 
+  - You can protect against the known vulnerabilities
+  - What can you do about the 0-Day vulnerabilities
+
+== Fundamental Structure
+* Does the platform that is running the container offer
+  - Isolation
+  - Supportability
+  - Least privilege
+
+== The Call-To-Action
+#TODO#
+
+== Reference
+* What are the risks of using containerization in my environment?
+* https://attack.mitre.org/matrices/enterprise/containers/
+* https://www.microsoft.com/security/blog/2021/03/23/secure-containerized-environments-with-updated-threat-matrix-for-kubernetes/
+* Endpoint Denial of Service
+* Resource Hijacking
+* Ingress tool Transfers (curl, wget, package managers, git)
+
+== #TODO# Other Notes / stuff to do something with
+
+Organizations should define and establish a process for identifying and validating the container images they use. The objective of the process should be to evaluate the risk of each container image to determine if the risk is acceptable or if further security controls should be implemented to reduce their risk to acceptable levels.
+
+This process is colloquially known as 
+“Hardening the container image” or 
+“Secure Workflow” or 
+“DISA Approved Best Practices”
+Defensible
+Minimally exposed
+Reducing the Attack Vector and Creating Redundancy
+Time Based Trust in Container Images
+Point in time Container State
+Security in depth
+Clearly defined security controls
+Container Building
+Compliant Container
+Tactical Guide to Securing Container Images
+
+* Depending on the risk the company is willing to take, the process would include:
+  - Identify the sources of your container images from (Trusted Vendors)
+  - Trust but verify your Trusted Vendors against the industry standards list publicly available 
+    * Scan container images with your hardending profile
+  - if not pass scan, but want to use image, build layer on top to remediate hardening findings
+    * maybe notify vender?
+  - if need additional functionality on top of outside container images, layer that on top and also apply hardening 
+  - Scan new layered container images
+  - scan container images that have been layered on top of base images
+  - base or layered images that pass scans, sign as trusted
+  - Canned list of hardening containers
+    * This is not all inclusive
+    * Here is the top 10/20 security controls
+  - trust container images at rest that are available for use as a runtime container
+    * establish trust for container images coming from outside of my Organization
+    * build trust into (ex/aka ‘harden’) container images built by my organization based on the container images from outside of my organization
+    * trust container images from internal and external sources are hardened
+  - trust containers at runtime using the container images I trust 
+* There is a need to establish visibility and validation with my organization's container images.
+* If we don’t have the visibility of the images how can this be used against my organization 
+  - Total cost of ownership
+  - Operational Risk
+  - Security Risk
+* "Trust" in this context is usually used to describe that the container was built by trusted persons, e.g. signed. This is different from the container being secure, e.g. configured correctly, no known vulnerabilities, etc. A container can be both trusted and insecure, if securing/hardening containers is also the goal, I'd suggest splitting this out from "trust".
+* Trust in the hardened image
+* Trust in the build process
+
+=== External Container Image Continuous Integration Workflow
+
+This is the workflow used to establish trust of an externally consumed container image.
+
+    1. Detect update to external Container Image
+    2. Start Release Engineering Workflow
+    3. Generate metadata, ex
+        a. version of the image
+        b. name of the image
+        c. parent of the image
+        d. who owns the image
+        e. whats in the image
+        f. purpose of the image
+        g. purpose of the release
+    4. Pull external container image
+    5. Verify source and signature of container image this container image
+    6. Run Static Image Scan: Compliance
+    7. Run Static Image Scan: Vulnerability
+    8. Run Static Image Scan: Hardcoded secrets
+    9. Run Container Image Unit Tests
+    10. Push Container Image to Repository
+    11. Sign Container Image
+        a. NOTE: container images can/should only be signed including their container image registry URI and digest so image must be pushed before it is signed
+        b. NOTE: that even though this container image was signed by the external provider of the image, that signature (should) be attached to the source it was pulled from and so when your organization pushes it to a new internal container registry the registry location and digest will change, and thus the image needs to be signed by the organization validating it now trusts this image
+    12. Push Signature to Image Signature Truststore
+    13. Generate, Publish, and Sign Evidence
+        a. evidence is a combination of the results of this workflow creating a pedigree for the image that is also signed
+    14. Notify other Container Image Continuous Integration workflows that depend on this image that a new image has been published
+        a. ex Base Container Image Continuous Integration Workflows that depend on this container image.
+
+=== Organization Base Container Image Continuous Integration Workflow
+
+This is the workflow used to build a “base container image” which is defined by any container image that is not intended to be deployed and run on a container platform directly but rather have one or more additional layers built on top of it, minimally a runtime application.
+
+    1. Detect new, changed, or merged Merge Request to Release branch for Container image source
+    2. start Release Engineering Workflow
+    3. Generate metadata, ex
+        a. version of the image
+        b. name of the image
+        c. parent of the image
+        d. who owns the image
+        e. what's in the image
+        f. purpose of the image
+        g. purpose of the release
+    4. Tag Source Code
+        a. minimally this is the Containerfile (or similar) that defines the container being built
+    5. Run Static Code Analysis of any source code to be included in the image
+        a. most commonly when building a base image this is additional scripts / entrypoint being included in the image
+    6. Verify source and signature of Base container image this container image is being built from
+    7. Create Container Image
+    8. Run Static Image Scan: Compliance
+    9. Run Static Image Scan: Vulnerability
+    10. Run Static Image Scan: Hardcoded secrets
+    11. Run Container Image Unit Tests
+    12. Push Container Image to Repository
+    13. Sign Container Image
+        a. NOTE: container images can/should only be signed including their container image registry URI and digest so image must be pushed before it is signed
+    14. Push Signature to Image Signature Truststore
+    15. Generate, Publish, and Sign Evidence
+        a. evidence is a combination of the results of this workflow creating a pedigree for the image that is also signed
+    16. Notify other Container Image Continuous Integration workflows that depend on this image that a new image has been published
+
+=== Runtime Container Image Continuous Integration Workflow
+This is the workflow used to build a container image that is meant to be deployed and run on a container platform. It will be built on top of an Organization Base Container Image or directly on top of an External Container Image by layering on the runtime application bits, typically compiled from source.
+
+    1. Detect new, changed, or merged Merge Request to Release branch for Container image source
+    2. start Release Engineering Workflow
+    3. Generate metadata, ex
+        a. version of the image
+        b. name of the image
+        c. parent of the image
+        d. who owns the image
+        e. what's in the image
+        f. purpose of the image
+        g. purpose of the release
+    4. Tag Source Code
+        a. the Containerfile (or similar) that defines the container being built
+        b. source code of runtime application being built into the container image
+    5. Run Application Unit Tests
+    6. Package Application Artifacts
+    7. Run Static Code Analysis
+    8. Push Application Artifacts to Repository
+    9. Verify source and signature of Base container image this container image is being built from
+    10. Create Container Image
+    11. Run Static Image Scan: Compliance
+    12. Run Static Image Scan: Vulnerability
+    13. Run Static Image Scan: Hardcoded secrets
+    14. Run Container Image Unit Tests
+    15. Push Container Image to Repository
+    16. Sign Container Image
+        a. NOTE: container images can/should only be signed including their container image registry URI and digest so image must be pushed before it is signed
+    17. Push Signature to Image Signature Truststore
+    18. Generate, Publish, and Sign Evidence
+        a. evidence is a combination of the results of this workflow creating a pedigree for the image that is also signed
+    19. Notify Continues Deployment workflows that a new image is ready for updated deployment to runtime container platforms
+
+=== Container Images at Rest Scanning (AKA, Container Image Registry Scanning)
+Trusting a container image when it is first pulled into an organization or built within the organization is one layer, but it is only a point in time layer of trust. To continually validate trust of container images, container images at rest (typically in a container image registry) need to be scanned and actions taken if trust thresholds are not met.
+
+Continually for each image at rest in all organizationally trusted Container Image Registries:
+    1. Validate Trust requirements
+        a. Verify signatures of images
+        b. Run Static Image Scan: Compliance
+        c. Run Static Image Scan: Vulnerability
+    2. If image no longer meets trust requirements do one or all of the following:
+        a. notify CI process for image that a new image needs to be built in hopes a new image will pass scans
+        b. send notification to users of image that it is no longer trusted
+        c. remove image from image registry
+            i. WARNING: without a replacement or notification to runtime environments / application release engineering workflows this can break runtime apps or break them when they need to redeploy for any reason (such as rescheduling a pod)
+        d. revoke image signature
+            i. WARNING: without a replacement or notification to runtime environments / application release engineering workflows this can break runtime apps or break them when they need to redeploy for any reason (such as rescheduling a pod) assuming your container runtime environment has been configured to only allow container images signed by trusted sources to be running
+
+=== Container Images at Runtime Scanning (AKA, container images running on a container platform)
+Trusting a container image when it is first pulled into an organization or built within the organization is one layer, and at rest is two layers, but is not sufficient for trusting container images at runtime. Additionally container images running in a container runtime environment must be continually scanned for trust thresholds and acted upon if no longer meeting those thresholds
+
+Continually for each image running on any organizationally trusted container platform:
+    1. Validate Trust requirements
+        a. Verify signatures of images
+        b. Run Static Image Scan: Compliance
+        c. Run Static Image Scan: Vulnerability
+    2. If image no longer meets trust requirements do one or all of the following:
+        a. notify CI process for image that a new image needs to be built in hopes a new image will pass scans
+        b. send notification to users of image that it is no longer trusted
+        c. undeploy containers using container image
+            i. WARNING: this will cause service disruption of services served by that container
+            ii. this is only practical in some situations
