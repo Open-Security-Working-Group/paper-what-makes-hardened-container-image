@@ -58,7 +58,7 @@ At the end, containers are a process or a group of processes which use some cool
 There is another place where you should consider using or not using root: inside the container. Due to user namespaces, you can be root (UID 0) within the rootless container. Isolation capabilities including user namespaces, SELinux and others allow that you are root within the container but not root outside it. However, a vulnerability in the isolation mechanisms can make that a user that is root within the container can reach kernel code or vulnerabilities. If you can execute the processes within the container also with a user different than root, you will reduce the attack surface and the risk.
 
 ### Use container images that don’t require special privileges
-If you can, use rootless containers. If you have to use rootful containers, try to use a non-root user within the containers. Use container images that don’t require to add capabilities to the container.
+If you can, use rootless containers. If you have to use rootfull containers, try to use a non-root user within the containers. Use container images that don’t require to add capabilities to the container.
 
 ### Minimize environment variables containing secrets
 As containers are ephemeral it is frequently an issue to decide when to store secrets. Including them in the container image is not a solution because then someone with access to the container image can retrieve them. Another option is to store them in environment variables and pass them to the containers. This is an option but the security we have over secrets in environment variables is reduced. There have already been public breaches where a vulnerability allowed the access to environment variables and thus, secrets stored there.
@@ -107,7 +107,7 @@ Privileged ports are those ports below 1024 and that require system privileges f
 * Available scanning to confirm origin
 
 ### Pull content layered into container image from trusted sources
-When building a custom container image the reason is typically to layer additional packages, binaries, or runnable source on top of the base image, and often that content comes from outside sources, such as packages or binaries from venders or upstream communities.
+When building a custom container image the reason is typically to layer additional packages, binaries, or runnable source on top of the base image, and often that content comes from outside sources, such as packages or binaries from vendors or upstream communities.
 
 The key is to be verifying the pull source of that content as part of the installation process into the container image and/or as a validation scan after the container image is built but before it is published.
 
@@ -161,9 +161,9 @@ This process is colloquially known as:
 * Depending on the risk the company is willing to take, the process would include:
   - Identify the sources of your container images from (Trusted Vendors)
   - Trust but verify your Trusted Vendors against the industry standards list publicly available 
-* Scan container images with your hardending profile
+* Scan container images with your hardening profile
   - if not pass scan, but want to use image, build layer on top to remediate hardening findings
-* maybe notify vender?
+* maybe notify vendor?
   - if need additional functionality on top of outside container images, layer that on top and also apply hardening 
   - Scan new layered container images
   - scan container images that have been layered on top of base images
